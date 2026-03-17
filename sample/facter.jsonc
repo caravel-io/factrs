@@ -1,0 +1,204 @@
+{
+  "aio_agent_version": "7.32.1", // From Puppet package information. Can be found with `puppet --version`.
+  "augeas": { // From augeas package information. Can be found with `aug-config --version`.
+    "version": "1.14.1"
+  },
+  "auth_users": "1000,11018", // Parsed from /etc/passwd
+  "authentication_method": "ActiveDirectory", // Inferred from /etc/krb5.conf, /etc/samba/smb.conf, or PAM configuration in /etc/pam.d/
+  "disks": { // From /sys/class/block/<device>/
+    "sda": {
+      "model": "Virtual disk", // cat /sys/class/block/sda/device/model
+      "size": "40.00 GiB", // cat /sys/class/block/sda/size (in sectors) * 512
+      "size_bytes": 42949672960,
+      "type": "hdd", // Inferred from /sys/class/block/sda/queue/rotational (1 for hdd, 0 for ssd)
+      "vendor": "VMware" // cat /sys/class/block/sda/device/vendor
+    }
+  },
+  "dmi": { // From /sys/class/dmi/id/
+    "bios": {
+      "release_date": "11/12/2020", // cat /sys/class/dmi/id/bios_date
+      "vendor": "Phoenix Technologies LTD", // cat /sys/class/dmi/id/bios_vendor
+      "version": "6.00" // cat /sys/class/dmi/id/bios_version
+    },
+    "board": {
+      "manufacturer": "Intel Corporation", // cat /sys/class/dmi/id/board_vendor
+      "product": "440BX Desktop Reference Platform", // cat /sys/class/dmi/id/board_name
+      "serial_number": "None" // cat /sys/class/dmi/id/board_serial
+    },
+    "chassis": {
+      "asset_tag": "No Asset Tag", // cat /sys/class/dmi/id/chassis_asset_tag
+      "type": "Other" // cat /sys/class/dmi/id/chassis_type
+    },
+    "manufacturer": "VMware, Inc.", // cat /sys/class/dmi/id/sys_vendor
+    "product": {
+      "name": "VMware Virtual Platform", // cat /sys/class/dmi/id/product_name
+      "serial_number": "VMware-42 16 f9 50 2d 95 c1 66-13 29 cc 10 44 06 bc 9a", // cat /sys/class/dmi/id/product_serial
+      "uuid": "50f91642-952d-66c1-1329-cc104406bc9a", // cat /sys/class/dmi/id/product_uuid
+      "version": "None"
+    }
+  },
+  "facterversion": "4.8.0", // From facter binary. Can be found with `facter --version`.
+  "filesystems": "xfs", // From /proc/filesystems
+  "fips_enabled": false, // cat /proc/sys/crypto/fips_enabled
+  "host_collection": "Test Tuesday 0500", // Custom fact, not in /proc or /etc
+  "hypervisors": { // Inferred from /sys/class/dmi/id/sys_vendor or presence of virtualization-specific files
+    "vmware": {
+    }
+  },
+  "identity": { // Can be found with `id`
+    "gid": 0,
+    "group": "root",
+    "privileged": true,
+    "uid": 0,
+    "user": "root"
+  },
+  "is_virtual": true, // Inferred from /sys/class/dmi/id/sys_vendor or other virtualization markers
+  "kernel": "Linux", // cat /proc/sys/kernel/ostype
+  "kernelmajversion": "4.18", // Parsed from /proc/sys/kernel/osrelease
+  "kernelrelease": "4.18.0-553.64.1.el8_10.x86_64", // cat /proc/sys/kernel/osrelease
+  "kernelversion": "4.18.0", // Parsed from /proc/sys/kernel/osrelease
+  "load_averages": { // Parsed from /proc/loadavg
+    "15m": 4.1,
+    "1m": 5.64,
+    "5m": 5.62
+  },
+  "memory": { // Parsed from /proc/meminfo
+    "swap": {
+      "available": "1.14 GiB",
+      "available_bytes": 1221046272,
+      "capacity": "45.07%",
+      "total": "2.07 GiB",
+      "total_bytes": 2222977024,
+      "used": "955.52 MiB",
+      "used_bytes": 1001930752
+    },
+    "system": {
+      "available": "343.66 MiB",
+      "available_bytes": 360353792,
+      "capacity": "80.32%",
+      "total": "1.71 GiB",
+      "total_bytes": 1831251968,
+      "used": "1.37 GiB",
+      "used_bytes": 1470898176
+    }
+  },
+  "mountpoints": { // Parsed from /proc/mounts or /etc/mtab
+    "/": {
+      "available": "27.89 GiB",
+      "available_bytes": 29951836160,
+      "capacity": "24.42%",
+      "device": "/dev/mapper/rhel-root",
+      "filesystem": "xfs",
+      "options": [
+        "rw",
+        "seclabel",
+        "relatime",
+        "attr2",
+        "inode64",
+        "logbufs=8",
+        "logbsize=32k",
+        "noquota"
+      ],
+      "size": "36.91 GiB",
+      "size_bytes": 39629398016,
+      "used": "9.01 GiB",
+      "used_bytes": 9677561856
+    }
+  },
+  "networking": { // Mostly from /sys/class/net/ and /etc/resolv.conf
+    "domain": "uoregon.edu", // Parsed from /etc/resolv.conf
+    "fqdn": "is-lc-rh8-t1.uoregon.edu", // Combination of /etc/hostname and /etc/resolv.conf
+    "hostname": "is-lc-rh8-t1", // cat /etc/hostname
+    "interfaces": { // from /sys/class/net/
+      "ens192": {
+        "mac": "00:50:56:96:98:24", // cat /sys/class/net/ens192/address
+        "mtu": 1500, // cat /sys/class/net/ens192/mtu
+        "operational_state": "up" // cat /sys/class/net/ens192/operstate
+      }
+    }
+  },
+  "os": { // Parsed from /etc/os-release
+    "architecture": "x86_64", // Can be found with `uname -m`
+    "distro": {
+      "codename": "Ootpa",
+      "description": "Red Hat Enterprise Linux release 8.10 (Ootpa)",
+      "id": "RedHatEnterprise",
+      "release": {
+        "full": "8.10",
+        "major": "8",
+        "minor": "10"
+      }
+    },
+    "family": "RedHat",
+    "hardware": "x86_64", // Can be found with `uname -m`
+    "name": "RedHat",
+    "release": {
+      "full": "8.10",
+      "major": "8",
+      "minor": "10"
+    },
+    "selinux": { // From /sys/fs/selinux/ or /etc/selinux/config
+      "config_mode": "permissive", // Parsed from /etc/selinux/config
+      "current_mode": "permissive", // cat /sys/fs/selinux/enforce (0 is permissive, 1 is enforcing)
+      "enabled": true
+    }
+  },
+  "package_manager": "yum", // Inferred from /etc/os-release (e.g., ID=rhel -> yum/dnf)
+  "partitions": { // Parsed from /proc/partitions
+    "/dev/mapper/rhel-root": {
+      "filesystem": "xfs"
+    }
+  },
+  "patching": { // Custom fact, not in /proc or /etc
+    "additional_contacts": [],
+    "environment": "test",
+    "individual_coordination": false,
+    "patch_time": "0400",
+    "reboot_time": "0500",
+    "weekday": "tuesday"
+  },
+  "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/puppetlabs/bin:/root/bin", // Process-specific environment variable. Can be found with `echo $PATH`.
+  "pp_cluster": "lcrown", // Custom Puppet fact, not in /proc or /etc
+  "pp_role": "puppet_systems::role::lcrown::rh8", // Custom Puppet fact, not in /proc or /etc
+  "processors": { // Parsed from /proc/cpuinfo
+    "cores": 1,
+    "count": 1,
+    "models": [
+      "Intel(R) Xeon(R) Gold 6258R CPU @ 2.70GHz"
+    ],
+    "physicalcount": 1,
+    "speed": "2.69 GHz",
+    "threads": 1
+  },
+  "ruby": { // From ruby binary. Can be found with `ruby --version`.
+    "platform": "x86_64-linux",
+    "sitedir": "/opt/puppetlabs/puppet/lib/ruby/site_ruby/2.7.0",
+    "version": "2.7.8"
+  },
+  "ssh": { // Public keys are in /etc/ssh/
+    "ecdsa": {
+      "key": "...", // cat /etc/ssh/ssh_host_ecdsa_key.pub
+      "type": "ecdsa-sha2-nistp256"
+    },
+    "ed25519": {
+      "key": "...", // cat /etc/ssh/ssh_host_ed25519_key.pub
+      "type": "ssh-ed25519"
+    },
+    "rsa": {
+      "key": "...", // cat /etc/ssh/ssh_host_rsa_key.pub
+      "type": "ssh-rsa"
+    }
+  },
+  "system_tags_log_retention_days": "30", // Custom fact, not in /proc or /etc
+  "system_tags_ou": "IS", // Custom fact, not in /proc or /etc
+  "system_tags_service": "rh8", // Custom fact, not in /proc or /etc
+  "system_tags_subou": "puppet_systems", // Custom fact, not in /proc or /etc
+  "system_uptime": { // Parsed from /proc/uptime
+    "days": 60,
+    "hours": 1443,
+    "seconds": 5196872,
+    "uptime": "60 days"
+  },
+  "timezone": "PDT", // From /etc/timezone or link target of /etc/localtime
+  "virtual": "vmware" // Inferred from /sys/class/dmi/id/sys_vendor
+}
