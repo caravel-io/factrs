@@ -7,7 +7,7 @@ repository = "https://github.com/caravel-io/fact-rs"
 readme = "README.md"
 keywords = ["facts", "system", "information"]
 categories = ["command-line-utilities"]
-license-file = "LICENSE.txt"
+license = "GPL-2.0-or-later"
 
 [[bin]]
 name = "factrs"
