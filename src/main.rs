@@ -1,5 +1,5 @@
 use anyhow::Result;
-use factrs;
+use bosun;
 
 fn main() -> Result<()> {
     factrs::build::run()?;
