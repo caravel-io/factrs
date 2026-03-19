@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::filesystem::slurp;
 
-use crate::components::Collector;
+use crate::Collector;
 use anyhow::Result;
 use serde::Serialize;
 use serde_json::to_value;

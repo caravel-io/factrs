@@ -1,11 +1,13 @@
-use crate::components::Collector;
+use crate::Collector;
+use crate::filesystem::slurp;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{to_value};
+use serde_json::to_value;
 use std::collections::HashMap;
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::path::Path;
 use std::process::Command;
 
+// These are the structs used to deserialize from JSON
 #[derive(Debug, Deserialize)]
 struct IPDevice {
     ifname: String,
@@ -13,81 +15,44 @@ struct IPDevice {
     operstate: String,
     link_type: String,
     address: String,
-    addr_info: Vec<IPDeviceAddr>,
+    addr_info: Vec<AddrInfo>,
 }
 
 #[derive(Debug, Deserialize)]
-struct IPDeviceAddr {
+struct AddrInfo {
     family: String,
     local: String,
-    broadcast: Option<String>,
     prefixlen: u32,
     scope: String,
-    label: Option<String>,
 }
+// end JSON fields
 
-#[derive(Debug, Serialize)]
-pub enum InterfaceState {
-    UP,
-    DOWN,
-    UNKNOWN,
-}
-
-#[derive(Serialize, Debug)]
-pub struct InterfaceFields {
-    /// The state of the interface
-    pub state: InterfaceState,
-    /// The type of the link
-    pub link_type: String,
-    /// The DHCP server for the network interface.
-    pub dhcp: Option<Ipv4Addr>,
-    /// The IPv4 address for the network interface.
-    pub ip: Option<Ipv4Addr>,
-    /// The IPv6 address for the network interface.
-    pub ip6: Option<Ipv6Addr>,
-    /// The MAC address for the network interface.
-    pub mac: String,
-    /// The Maximum Transmission Unit (MTU) for the network interface.
-    pub mtu: u32,
-    /// The IPv4 prefix for the network interface.
-    pub prefix: Option<u32>,
-    /// The IPv6 prefix for the network interface.
-    pub prefix6: Option<u32>,
-    /// The IPv4 network for the network interface.
-    pub network: Option<Ipv4Addr>,
-    /// The IPv6 network for the network interface.
-    pub network6: Option<Ipv6Addr>,
-    /// The IPv6 scope for the network interface.
-    pub scope6: String,
-}
-
-#[derive(Serialize, Debug)]
-pub struct Interface {
-    /// The array of IPv4 address bindings for the interface.
-    pub bindings: Vec<Ipv4Addr>,
-    /// The array of IPv6 address bindings for the interface.
-    pub bindings6: Vec<Ipv6Addr>,
-
-    #[serde(flatten)]
-    pub interface_fields: InterfaceFields,
-}
-
+// These are the structs used to format it how I want them to serialize
 #[derive(Debug, Serialize)]
 pub struct NetworkFacts {
-    /// The host name of the system
     pub hostname: String,
-    /// The domain name of the system
     pub domain: Option<String>,
-    /// The fully-qualified domain name of the system
-    pub fqdn: String,
-    /// The network interfaces of the system
+    pub fqdn: Option<String>,
+    pub primary: Option<String>,
+    pub ip: Option<String>,
+    pub ip6: Option<String>,
+    pub mac: Option<String>,
+    pub mtu: Option<u32>,
     pub interfaces: HashMap<String, Interface>,
-    /// The name of the primary interface.
-    pub primary: String,
-
-    #[serde(flatten)]
-    pub interface_fields: InterfaceFields,
 }
+#[derive(Serialize, Debug)]
+pub struct Interface {
+    pub name: String,
+    pub ip: Option<String>,
+    pub prefix: Option<u32>,
+    pub ip6: Option<String>,
+    pub prefix6: Option<u32>,
+    pub mtu: Option<u32>,
+    pub mac: Option<String>,
+    pub operational_state: String,
+    pub link_type: String,
+}
+// end JSON serialize
 
 pub struct NetworkComponent;
 impl NetworkComponent {
@@ -95,73 +60,121 @@ impl NetworkComponent {
         Self
     }
 }
+
 impl Collector for NetworkComponent {
     fn name(&self) -> &'static str {
         "network"
     }
 
     fn collect(&self) -> Result<serde_json::Value> {
-        let hostname = "myhostname";
-        let domain = "mydomain.org";
-        let mut interfaces = HashMap::new();
-        interfaces.insert(
-            "eth0".to_string(),
-            Interface {
-                bindings: vec!["10.0.0.1".parse::<Ipv4Addr>()?],
-                bindings6: vec!["fe80::c468:27d4:bd86:a4f6".parse::<Ipv6Addr>()?],
-                interface_fields: InterfaceFields {
-                    state: InterfaceState::UP,
-                    link_type: "inet".to_string(),
-                    mac: "3e:0a:ff:fd:7f:9f".to_string(),
-                    mtu: 1500,
-                    scope6: "scope".to_string(),
-                    dhcp: Some("128.223.32.36".parse::<Ipv4Addr>()?),
-                    prefix: Some(24),
-                    network: Some("10.0.0.0".parse::<Ipv4Addr>()?),
-                    ip: Some("10.0.0.1".parse::<Ipv4Addr>()?),
-                    ip6: Some("fe80::c468:27d4:bd86:a4f6".parse::<Ipv6Addr>()?),
-                    prefix6: Some(64),
-                    network6: Some("fe80::c468:27d4:bd86".parse::<Ipv6Addr>()?),
+        let hostname = get_hostname()?;
+        let domain = get_domain()?;
+        let fqdn = build_fqdn(&hostname, &domain);
+
+        let ip_devices_output = get_all_ip_devices_output()?;
+        let system_devices = parse_ip_devices_output(&ip_devices_output)?;
+
+        // ip is ordered by ifindex, primary should be first, skipping loopback
+        let mut interfaces: HashMap<String, Interface> = HashMap::new();
+
+        // primary device, will be filled out later
+        let mut primary_ifname = None;
+        let mut primary_ip = None;
+        let mut primary_ip6 = None;
+        let mut primary_mac = None;
+        let mut primary_mtu = None;
+
+        let mut primary_done = false;
+        for device in system_devices {
+            // properties to be filled out by iterating through the device infos
+            let mut ip = None;
+            let mut prefix = None;
+            let mut ip6 = None;
+            let mut prefix6 = None;
+
+            for addr_info in &device.addr_info {
+                if addr_info.scope == "link" {
+                    // dunno what this is :)
+                    continue;
+                }
+                if addr_info.family == "inet" {
+                    ip = Some(addr_info.local.clone());
+                    prefix = Some(addr_info.prefixlen);
+                }
+                if addr_info.family == "inet6" {
+                    ip6 = Some(addr_info.local.clone());
+                    prefix6 = Some(addr_info.prefixlen);
+                }
+            }
+
+            // find the first occurrence of the "ether" device type
+            // that will be our primary
+            if !primary_done && device.link_type == "ether" {
+                primary_ifname = Some(device.ifname.clone());
+                primary_ip = ip.clone();
+                primary_ip6 = ip6.clone();
+                primary_mac = Some(device.address.clone());
+                primary_mtu = Some(device.mtu.clone());
+                primary_done = true;
+            }
+
+            interfaces.insert(
+                device.ifname.clone(),
+                Interface {
+                    name: device.ifname.clone(),
+                    operational_state: device.operstate.clone(),
+                    mtu: Some(device.mtu),
+                    mac: Some(device.address.clone()),
+                    link_type: device.link_type.clone(),
+                    ip: ip,
+                    prefix: prefix,
+                    ip6: ip6,
+                    prefix6: prefix6,
                 },
-            },
-        );
+            );
+        }
         let facts = NetworkFacts {
-            hostname: hostname.to_string(),
-            domain: Some(domain.to_string()),
-            fqdn: format!("{hostname}.{domain}"),
+            hostname: hostname,
+            domain: domain,
+            fqdn: fqdn,
+            primary: primary_ifname,
+            ip: primary_ip,
+            ip6: primary_ip6,
+            mac: primary_mac,
+            mtu: primary_mtu,
             interfaces: interfaces,
-            primary: "eth0".to_string(),
-            interface_fields: InterfaceFields {
-                state: InterfaceState::UP,
-                link_type: "inet".to_string(),
-                mac: "3e:0a:ff:fd:7f:9f".to_string(),
-                mtu: 1500,
-                scope6: "scope".to_string(),
-                dhcp: Some("128.223.32.36".parse::<Ipv4Addr>()?),
-                prefix: Some(24),
-                network: Some("10.0.0.0".parse::<Ipv4Addr>()?),
-                ip: Some("10.0.0.1".parse::<Ipv4Addr>()?),
-                ip6: Some("fe80::c468:27d4:bd86:a4f6".parse::<Ipv6Addr>()?),
-                prefix6: Some(64),
-                network6: Some("fe80::c468:27d4:bd86".parse::<Ipv6Addr>()?),
-            },
         };
         let j = to_value(facts).context("serializing to json value")?;
         Ok(j)
     }
 }
 
-pub fn parse_ip_devices_output(output: &str) -> Result<Vec<Interface>> {
-    // TODO: next up, get hostname, domain, fqdn, and primary device working
-
-    unimplemented!();
-    // let devices: Vec<IPDevice> = serde_json::from_str(&output)?;
-    // for device in devices {}
-    // let facts = NetworkFacts {};
-    // Ok(vec![])
+fn get_hostname() -> Result<String> {
+    Ok(slurp(Path::new("/proc/sys/kernel/hostname")).context("failed to read hostname")?)
 }
 
-pub fn get_all_ip_devices() -> Result<String> {
+fn get_domain() -> Result<Option<String>> {
+    let domain =
+        slurp(Path::new("/proc/sys/kernel/domainname")).context("failed to read domainname")?;
+    if domain.is_empty() || domain == "(none)" {
+        return Ok(None);
+    }
+    Ok(Some(domain))
+}
+
+fn build_fqdn(hostname: &str, domain: &Option<String>) -> Option<String> {
+    return match domain {
+        None => None,
+        Some(d) => Some(format!("{}.{}", hostname, d)),
+    };
+}
+
+fn parse_ip_devices_output(output: &str) -> Result<Vec<IPDevice>> {
+    let devices: Vec<IPDevice> = serde_json::from_str(&output)?;
+    Ok(devices)
+}
+
+fn get_all_ip_devices_output() -> Result<String> {
     let output = Command::new("ip")
         .arg("-j")
         .arg("addr")

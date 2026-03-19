@@ -1,6 +1,6 @@
 use crate::filesystem::slurp;
 
-use crate::components::Collector;
+use crate::Collector;
 use anyhow::{Context, Result};
 use serde::Serialize;
 use serde_json::to_value;
@@ -11,10 +11,6 @@ use std::path::Path;
 pub struct MemoryType {
     pub total_bytes: u64,
 }
-
-#[derive(Serialize, Debug)]
-#[serde(transparent)]
-pub struct MemoryFacts(pub HashMap<String, MemoryType>);
 
 pub struct MemoryComponent;
 
@@ -56,7 +52,7 @@ fn parse_meminfo(contents: &str) -> HashMap<String, u64> {
         .collect()
 }
 
-fn build_memory_facts(meminfo: HashMap<String, u64>) -> MemoryFacts {
+fn build_memory_facts(meminfo: HashMap<String, u64>) -> HashMap<String, MemoryType> {
     let mut sections: HashMap<String, MemoryType> = HashMap::new();
 
     for (key, total_bytes) in meminfo.iter() {
@@ -77,7 +73,7 @@ fn build_memory_facts(meminfo: HashMap<String, u64>) -> MemoryFacts {
         };
     }
 
-    MemoryFacts(sections)
+    sections
 }
 
 #[cfg(test)]
@@ -99,7 +95,7 @@ mod tests {
         meminfo.insert("MemTotal".to_string(), 16777216);
         meminfo.insert("SwapTotal".to_string(), 8388608);
         let memory_facts = build_memory_facts(meminfo);
-        assert_eq!(memory_facts.0.get("real").unwrap().total_bytes, 16777216);
-        assert_eq!(memory_facts.0.get("swap").unwrap().total_bytes, 8388608);
+        assert_eq!(memory_facts.get("real").unwrap().total_bytes, 16777216);
+        assert_eq!(memory_facts.get("swap").unwrap().total_bytes, 8388608);
     }
 }

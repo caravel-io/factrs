@@ -2,6 +2,13 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
+/// Reads a file into a string
+///
+/// # Example:
+///
+/// let contents = slurp(Path::new("/proc/sys/kernel/hostname"));
+/// assert_eq(contents, "myhostname");
+///
 pub fn slurp(path: impl AsRef<Path>) -> Result<String> {
     std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", path.as_ref().display()))
