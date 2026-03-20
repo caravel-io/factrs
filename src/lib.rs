@@ -2,7 +2,7 @@ pub mod components;
 
 pub mod filesystem;
 
-use crate::components::{kernel, memory, mount, network};
+use crate::components::{cpu, kernel, memory, mount, network};
 use anyhow::Result;
 use rayon::prelude::*;
 use serde_json::{Map, Value};
@@ -20,6 +20,7 @@ pub fn run() -> Result<()> {
     // implements the Component trait
     let components: Vec<Arc<dyn Collector>> = vec![
         Arc::new(kernel::KernelComponent::new()),
+        Arc::new(cpu::CPUComponent::new()),
         Arc::new(memory::MemoryComponent::new()),
         Arc::new(mount::MountComponent::new()),
         Arc::new(network::NetworkComponent::new()),
